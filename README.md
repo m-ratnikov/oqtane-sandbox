@@ -1,1 +1,1 @@
-Testing oqtane framworks modules
+Testing oqtane framwork's modules
