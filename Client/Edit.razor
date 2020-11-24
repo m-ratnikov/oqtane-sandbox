@@ -1,0 +1,153 @@
+@using Oqtane.Modules.Controls
+@using QB.Customer.Services
+@using QB.Customer.Models
+
+@namespace QB.Customer
+@inherits ModuleBase
+@inject ICustomerService CustomerService
+@inject NavigationManager NavigationManager
+
+<table class="table table-borderless">
+    <tr>
+        <td>
+            <Label For="first-name" HelpText="Enter first name">First Name: </Label>
+        </td>
+        <td>
+            <input id="first-name" class="form-control" @bind="@_firstName" />
+        </td>
+        <td>
+            <Label For="last-name" HelpText="Enter last name">Last Name: </Label>
+        </td>
+        <td>
+            <input id="last-name" class="form-control" @bind="@_lastName" />
+        </td>
+        <td>
+            <Label For="address" HelpText="Enter address">Address: </Label>
+        </td>
+        <td>
+            <input id="address" class="form-control" @bind="@_address" />
+        </td>
+        <td>
+            <Label For="city" HelpText="Enter city">City: </Label>
+        </td>
+        <td>
+            <input id="city" class="form-control" @bind="@_city" />
+        </td>
+        <td>
+            <Label For="state" HelpText="Enter state">State: </Label>
+        </td>
+        <td>
+            <input id="state" class="form-control" @bind="@_state" />
+        </td>
+        <td>
+            <Label For="zip" HelpText="Enter state">Zip: </Label>
+        </td>
+        <td>
+            <input id="zip" class="form-control" @bind="@_zip" />
+        </td>
+    </tr>
+</table>
+<button type="button" class="btn btn-success" @onclick="Save">Save</button>
+<NavLink class="btn btn-secondary" href="@NavigateUrl()">Cancel</NavLink>
+<br />
+<br />
+@if (PageState.Action == "Edit")
+{
+    <AuditInfo CreatedBy="@_createdby" CreatedOn="@_createdon" ModifiedBy="@_modifiedby" ModifiedOn="@_modifiedon"></AuditInfo>
+}
+
+@code {
+    public override SecurityAccessLevel SecurityAccessLevel => SecurityAccessLevel.Edit;
+
+    public override string Actions => "Add,Edit";
+
+    public override string Title => "Manage Customer";
+
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" }
+    };
+
+    int _id;
+    string _firstName;
+    string _lastName;
+    string _address;
+    string _city;
+    string _state;
+    string _zip;
+    string _createdby;
+    DateTime _createdon;
+    string _modifiedby;
+    DateTime _modifiedon;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            if (PageState.Action == "Edit")
+            {
+                _id = Int32.Parse(PageState.QueryString["id"]);
+                Customer Customer = await CustomerService.GetCustomerAsync(_id, ModuleState.ModuleId);
+                if (Customer != null)
+                {
+                    _firstName = Customer.FirstName;
+                    _lastName = Customer.LastName;
+                    _address = Customer.Address;
+                    _city = Customer.City;
+                    _state = Customer.State;
+                    _zip = Customer.Zip;
+
+                    _createdby = Customer.CreatedBy;
+                    _createdon = Customer.CreatedOn;
+                    _modifiedby = Customer.ModifiedBy;
+                    _modifiedon = Customer.ModifiedOn;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Customer {CustomerId} {Error}", _id, ex.Message);
+            AddModuleMessage("Error Loading Customer", MessageType.Error);
+        }
+    }
+
+    private async Task Save()
+    {
+        try
+        {
+            if (PageState.Action == "Add")
+            {
+                Customer Customer = new Customer();
+                Customer.ModuleId = ModuleState.ModuleId;
+                Customer.FirstName = _firstName;
+                Customer.LastName = _lastName;
+                Customer.Address = _address;
+                Customer.City = _city;
+                Customer.State = _state;
+                Customer.Zip = _zip;
+
+
+                Customer = await CustomerService.AddCustomerAsync(Customer);
+                await logger.LogInformation("Customer Added {Customer}", Customer);
+            }
+            else
+            {
+                Customer Customer = await CustomerService.GetCustomerAsync(_id, ModuleState.ModuleId);
+                Customer.FirstName = _firstName;
+                Customer.LastName = _lastName;
+                Customer.Address = _address;
+                Customer.City = _city;
+                Customer.State = _state;
+                Customer.Zip = _zip;
+                await CustomerService.UpdateCustomerAsync(Customer);
+                await logger.LogInformation("Customer Updated {Customer}", Customer);
+            }
+            NavigationManager.NavigateTo(NavigateUrl());
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Saving Customer {Error}", ex.Message);
+            AddModuleMessage("Error Saving Customer", MessageType.Error);
+        }
+    }
+}

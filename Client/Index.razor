@@ -1,0 +1,86 @@
+@using QB.Customer.Services
+@using QB.Customer.Models
+
+@namespace QB.Customer
+@inherits ModuleBase
+@inject ICustomerService CustomerService
+@inject NavigationManager NavigationManager
+
+@if (_Customers == null)
+{
+    <p><em>Loading...</em></p>
+}
+else
+{
+    <ActionLink Action="Add" Security="SecurityAccessLevel.Edit" Text="Add Customer" />
+    <br />
+    <br />
+    @if (@_Customers.Count != 0)
+    {
+        <Pager Items="@_Customers">
+            <Header>
+                <th style="width: 1px;">&nbsp;</th>
+                <th style="width: 1px;">&nbsp;</th>
+                <th>First Name</th>
+                <th>Last Name</th>
+                <th>Address</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Zip</th>
+            </Header>
+            <Row>
+                <td><ActionLink Action="Edit" Parameters="@($"id=" + context.CustomerId.ToString())" /></td>
+                <td><ActionDialog Header="Delete Customer" Message="@("Are You Sure You Wish To Delete The " + context.FirstName + " Customer?")" Action="Delete" Security="SecurityAccessLevel.Edit" Class="btn btn-danger" OnClick="@(async () => await Delete(context))" /></td>
+                <td>@context.FirstName</td>
+                <td>@context.LastName</td>
+                <td>@context.Address</td>
+                <td>@context.City</td>
+                <td>@context.State</td>
+                <td>@context.Zip</td>
+            </Row>
+        </Pager>
+    }
+    else
+    {
+        <p>No Customers To Display</p>
+    }
+}
+
+@code {
+    public override List<Resource> Resources => new List<Resource>()
+    {
+        new Resource { ResourceType = ResourceType.Stylesheet, Url = ModulePath() + "Module.css" },
+        new Resource { ResourceType = ResourceType.Script, Url = ModulePath() + "Module.js" }
+    };
+
+    List<Customer> _Customers;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _Customers = await CustomerService.GetCustomersAsync(ModuleState.ModuleId);
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Loading Customer {Error}", ex.Message);
+            AddModuleMessage("Error Loading Customer", MessageType.Error);
+        }
+    }
+
+    private async Task Delete(Customer Customer)
+    {
+        try
+        {
+            await CustomerService.DeleteCustomerAsync(Customer.CustomerId, ModuleState.ModuleId);
+            await logger.LogInformation("Customer Deleted {Customer}", Customer);
+            _Customers = await CustomerService.GetCustomersAsync(ModuleState.ModuleId);
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            await logger.LogError(ex, "Error Deleting Customer {Customer} {Error}", Customer, ex.Message);
+            AddModuleMessage("Error Deleting Customer", MessageType.Error);
+        }
+    }
+}
